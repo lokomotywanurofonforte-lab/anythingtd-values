@@ -1,0 +1,636 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Anything TD Values</title>
+<meta name="description" content="Trade values for every Anything TD unit, glove and crate, with a trade calculator.">
+<link rel="icon" href="cards/c13.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&display=swap">
+<style>
+html { padding: env(safe-area-inset-top, 0px) 0 env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<style>
+/* layout: the game's own look. item cards on the left, trade calculator pinned on the right; on a phone the calculator sits above the list. one dark theme on purpose, it copies the in-game inventory. */
+:root {
+	color-scheme: dark;
+	--deep: #0a2233;
+	--check: #0e2d43;
+	--panel: #123750;
+	--inset: #0b2638;
+	--edge: #051019;
+	--fg: #ffffff;
+	--soft: #a9c6d8;
+	--token: #ffe14a;
+	--go: #2fe01c;
+	--goedge: #0b4a06;
+	--stop: #ff3b3b;
+	--stopedge: #5c0a0a;
+	--fair: #4db4ff;
+	--fairedge: #0a3a66;
+	--warm: #ff9a2e;
+	--dim: #8ea3b3;
+	--common: #d9d9d9;
+	--uncommon: #4cd964;
+	--rare: #3d8bff;
+	--epic: #a64dff;
+	--legendary: #ffc81e;
+	--mythic: #ff2a2a;
+	--divine: #fff6c8;
+	--celestial: #7cf0ff;
+	--exclusive: #ff78b9;
+	--font: "Fredoka", "Trebuchet MS", "Arial Rounded MT Bold", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+	color: var(--fg);
+	font-family: var(--font);
+	font-weight: 500;
+	font-size: 15px;
+	line-height: 1.4;
+	background-color: var(--deep);
+	background-image: conic-gradient(var(--check) 25%, var(--deep) 0 50%, var(--check) 0 75%, var(--deep) 0);
+	background-size: 64px 64px;
+}
+.ink {
+	-webkit-text-stroke: 5px var(--edge);
+	paint-order: stroke fill;
+}
+.wrap {
+	max-width: 1280px;
+	margin: 0 auto;
+	padding-block: 22px 48px;
+	padding-left: max(16px, env(safe-area-inset-left, 0px));
+	padding-right: max(16px, env(safe-area-inset-right, 0px));
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+}
+header h1 {
+	font-weight: 700;
+	font-size: clamp(30px, 6vw, 48px);
+	line-height: 1.05;
+	margin: 0;
+	text-wrap: balance;
+	-webkit-text-stroke: 8px var(--edge);
+	paint-order: stroke fill;
+}
+header h1 span { color: var(--token); }
+header p { margin: 8px 0 0; color: var(--soft); max-width: 60ch; font-size: 16px; }
+.main { display: grid; grid-template-columns: minmax(0, 1fr) 372px; gap: 20px; align-items: start; }
+.listside { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tools input[type="search"], .tools select, .tok input {
+	height: 44px;
+	padding: 0 14px;
+	border: 3px solid var(--edge);
+	border-radius: 4px;
+	background: var(--inset);
+	color: var(--fg);
+	font: 600 16px var(--font);
+}
+.tools input[type="search"] { flex: 1 1 200px; min-width: 0; }
+.tools input::placeholder, .tok input::placeholder { color: var(--soft); opacity: 0.8; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.btn {
+	height: 44px;
+	padding: 0 16px;
+	border: 3px solid var(--edge);
+	border-radius: 4px;
+	background: var(--panel);
+	color: var(--fg);
+	font: 700 16px var(--font);
+	cursor: pointer;
+	-webkit-text-stroke: 4px var(--edge);
+	paint-order: stroke fill;
+}
+.btn:hover { filter: brightness(1.12); }
+.btn:active { transform: translateY(2px); }
+.btn.green, .chip[aria-pressed="true"] { background: var(--go); border-color: var(--goedge); -webkit-text-stroke-color: var(--goedge); }
+.btn.red { background: var(--stop); border-color: var(--stopedge); -webkit-text-stroke-color: var(--stopedge); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--token); outline-offset: 2px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 14px; }
+.card {
+	background: var(--panel);
+	border: 3px solid var(--edge);
+	border-radius: 4px;
+	padding: 8px;
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-width: 0;
+}
+.pic {
+	position: relative;
+	aspect-ratio: 1 / 1;
+	max-width: 100%;
+	border: 4px solid var(--rc, var(--common));
+	outline: 3px solid var(--edge);
+	outline-offset: -1px;
+	overflow: hidden;
+	background: var(--inset);
+}
+.card[data-r="Omni"] .pic, .row[data-r="Omni"] .mini { border-image: linear-gradient(90deg, #ff4d4d, #ffb84d, #f9ff4d, #4dff7c, #4dc3ff, #b44dff) 1; }
+.pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.amt {
+	position: absolute;
+	left: 0;
+	right: 0;
+	bottom: 2px;
+	text-align: center;
+	font: 700 22px/1 var(--font);
+	font-variant-numeric: tabular-nums;
+}
+.tag {
+	position: absolute;
+	top: 6px;
+	right: 8px;
+	transform: rotate(6deg);
+	font: 700 14px/1 var(--font);
+	color: var(--token);
+}
+.card h3 { font: 700 18px/1.1 var(--font); margin: 4px 0 0; overflow-wrap: anywhere; color: var(--rc, var(--fg)); }
+.card[data-r="Omni"] h3 { color: var(--fg); }
+.val { font: 700 28px/1 var(--font); color: var(--token); font-variant-numeric: tabular-nums; }
+.info { margin: 0; font-size: 13px; line-height: 1.3; color: var(--soft); min-height: 34px; }
+.pills { display: flex; flex-wrap: wrap; gap: 4px; }
+.pill { font: 700 12px/1 var(--font); padding: 4px 7px; border: 2px solid var(--edge); border-radius: 4px; background: var(--inset); color: var(--soft); white-space: nowrap; }
+.pill.ultra { background: var(--token); color: var(--edge); }
+.pill.rising { background: var(--go); color: var(--edge); }
+.pill.dropping { background: var(--stop); color: var(--edge); }
+.pill.insane { background: var(--exclusive); color: var(--edge); }
+.pill.high { background: var(--warm); color: var(--edge); }
+.pill.medium { background: var(--fair); color: var(--edge); }
+.pill.low { background: var(--dim); color: var(--edge); }
+.acts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: auto; }
+.acts .btn { height: 36px; padding: 0; font-size: 15px; }
+.empty { color: var(--soft); padding: 24px 0; font-size: 16px; }
+.calc {
+	position: sticky;
+	top: calc(env(safe-area-inset-top, 0px) + 12px);
+	background: var(--panel);
+	border: 3px solid var(--edge);
+	border-radius: 4px;
+	padding: 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	max-height: calc(100vh - 24px);
+	overflow-y: auto;
+}
+.calc h2 { font: 700 24px/1 var(--font); margin: 0; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.calc h2 .btn { height: 36px; font-size: 14px; padding: 0 12px; }
+.note { margin: 0; font-size: 13px; color: var(--soft); }
+.side { background: var(--inset); border: 3px solid var(--edge); border-radius: 4px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.side h3 { font: 700 18px/1 var(--font); margin: 0; display: flex; justify-content: space-between; gap: 8px; }
+.side h3 b { color: var(--token); font-variant-numeric: tabular-nums; }
+.rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto; gap: 8px; align-items: center; font-size: 14px; }
+.mini { width: 40px; height: 40px; border: 3px solid var(--rc, var(--common)); object-fit: cover; display: block; }
+.row .nm { min-width: 0; overflow-wrap: anywhere; font-weight: 600; line-height: 1.15; }
+.row .nm small { display: block; color: var(--token); font-weight: 600; font-variant-numeric: tabular-nums; }
+.qty { display: flex; align-items: center; gap: 4px; }
+.sq {
+	width: 28px;
+	height: 28px;
+	border: 3px solid var(--edge);
+	border-radius: 4px;
+	background: var(--panel);
+	color: var(--fg);
+	font: 700 15px/1 var(--font);
+	cursor: pointer;
+	padding: 0;
+}
+.sq.x { background: var(--stop); border-color: var(--stopedge); }
+.qty b { min-width: 24px; text-align: center; font-variant-numeric: tabular-nums; }
+.tok { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--soft); }
+.tok input { flex: 1; min-width: 0; height: 38px; font-size: 15px; }
+.hint { margin: 0; font-size: 13.5px; color: var(--soft); }
+.verdict { border: 3px solid var(--edge); border-radius: 4px; padding: 12px; background: var(--inset); display: flex; flex-direction: column; gap: 8px; }
+.verdict strong { font: 700 24px/1.1 var(--font); }
+.verdict span { font-size: 13.5px; color: var(--fg); }
+.verdict.win { background: var(--go); border-color: var(--goedge); }
+.verdict.win strong { -webkit-text-stroke: 5px var(--goedge); paint-order: stroke fill; }
+.verdict.lose { background: var(--stop); border-color: var(--stopedge); }
+.verdict.lose strong { -webkit-text-stroke: 5px var(--stopedge); paint-order: stroke fill; }
+.verdict.fair { background: var(--fair); border-color: var(--fairedge); }
+.verdict.fair strong { -webkit-text-stroke: 5px var(--fairedge); paint-order: stroke fill; }
+.verdict.win span, .verdict.lose span, .verdict.fair span { color: var(--edge); font-weight: 600; }
+.bar { height: 14px; border: 3px solid var(--edge); background: var(--edge); display: flex; }
+.bar i { display: block; height: 100%; background: var(--stop); }
+.bar i + i { background: var(--go); }
+footer { color: var(--soft); font-size: 14px; display: flex; flex-direction: column; gap: 6px; max-width: 72ch; }
+footer h2 { font: 700 20px var(--font); color: var(--fg); margin: 0; }
+footer p { margin: 0; }
+@media (max-width: 900px) {
+	.main { grid-template-columns: minmax(0, 1fr); }
+	.calc { position: static; max-height: none; order: -1; }
+	.grid { grid-template-columns: repeat(auto-fill, minmax(146px, 1fr)); gap: 10px; }
+	.val { font-size: 24px; }
+}
+</style>
+
+<div class="wrap">
+	<header>
+		<h1>Anything TD <span>Values</span></h1>
+		<p>Real trade values in tokens, from what a unit costs to summon and how many copies exist in the game. Counted on 21 Nov 2026 from 31 players.</p>
+	</header>
+
+	<div class="main">
+		<div class="listside">
+			<div class="tools">
+				<input type="search" id="search" placeholder="Search..." autocomplete="off" aria-label="Search">
+				<div class="chips" id="chips" role="group" aria-label="Show">
+					<button class="btn chip" type="button" data-kind="all" aria-pressed="true">All</button>
+					<button class="btn chip" type="button" data-kind="unit" aria-pressed="false">Units</button>
+					<button class="btn chip" type="button" data-kind="glove" aria-pressed="false">Gloves</button>
+					<button class="btn chip" type="button" data-kind="crate" aria-pressed="false">Crates</button>
+				</div>
+				<select id="sort" aria-label="Sort">
+					<option value="high">Highest value</option>
+					<option value="low">Lowest value</option>
+					<option value="hot">Rising first</option>
+					<option value="rare">Fewest exist</option>
+					<option value="name">Name</option>
+				</select>
+			</div>
+			<div class="grid" id="grid"></div>
+			<p class="empty" id="empty" hidden>Nothing matches that search.</p>
+		</div>
+
+		<section class="calc" aria-label="Trade calculator">
+			<h2><span class="ink">Trade calculator</span> <button class="btn red" type="button" id="clear">Clear</button></h2>
+			<p class="note" id="example">This is an example trade. Press Clear to start your own.</p>
+			<div class="side">
+				<h3><span class="ink">You give</span> <b class="ink" id="givetotal">0</b></h3>
+				<ul class="rows" id="giverows"></ul>
+				<p class="hint" id="givehint">Press Give on an item to add it here.</p>
+				<label class="tok">Tokens <input type="text" inputmode="numeric" id="givetokens" placeholder="0" autocomplete="off"></label>
+			</div>
+			<div class="side">
+				<h3><span class="ink">You get</span> <b class="ink" id="gettotal">0</b></h3>
+				<ul class="rows" id="getrows"></ul>
+				<p class="hint" id="gethint">Press Get on an item to add it here.</p>
+				<label class="tok">Tokens <input type="text" inputmode="numeric" id="gettokens" placeholder="0" autocomplete="off"></label>
+			</div>
+			<div class="verdict" id="verdict">
+				<strong id="verdicttitle">Add items to both sides</strong>
+				<div class="bar" id="bar" hidden><i id="bargive"></i><i id="barget"></i></div>
+				<span id="verdictnote">The calculator adds up both sides and tells you who wins.</span>
+			</div>
+		</section>
+	</div>
+
+	<footer>
+		<h2 class="ink">How the values are set</h2>
+		<p>A unit from the summon is worth what it costs to pull with the 2x luck pass, at 900 tokens for 10 summons. Units you cannot summon are priced from how many copies exist: the fewer exist, the more they are worth. The number on each picture is how many exist right now.</p>
+		<p>Units and gloves that nobody owns yet show O/C, which means owner's choice: there is no real value until copies exist, so whoever gets one first sets the price. Their trend and demand show N/A. Gloves are priced from what they cost in slaps, with 1 slap counted as 300 tokens. One slap match pays about 330 slaps and one good normal match about 100K tokens, so a glove costs the same number of matches either way. A crate is worth the average of what it drops.</p>
+		<p>Rising means the value is expected to go up, dropping means more copies keep coming in. Demand is how much players want it in trades.</p>
+		<p>Tokens count 1 for 1 in the calculator. A trade within 10% is called fair.</p>
+	</footer>
+</div>
+
+<script>
+const items = [{"n": "Dummy", "r": "Common", "k": "unit", "c": 15864, "o": 20, "v": 100, "s": "Summon 60%", "w": 0, "i": "cards/c00.webp", "t": "dropping", "d": "low"}, {"n": "Bacon", "r": "Uncommon", "k": "unit", "c": 7855, "o": 14, "v": 200, "s": "Summon 25%", "w": 0, "i": "cards/c01.webp", "t": "dropping", "d": "low"}, {"n": "Rocket-Noob", "r": "Rare", "k": "unit", "c": 5053, "o": 19, "v": 450, "s": "Summon 10%", "w": 0, "i": "cards/c02.webp", "t": "dropping", "d": "low"}, {"n": "Pawn", "r": "Epic", "k": "unit", "c": 1730, "o": 17, "v": 1300, "s": "Summon 3.5%", "w": 0, "i": "cards/c03.webp", "t": "stable", "d": "low"}, {"n": "Kratos", "r": "Legendary", "k": "unit", "c": 649, "o": 17, "v": 3800, "s": "Summon 1.2%", "w": 0, "i": "cards/c04.webp", "t": "stable", "d": "medium"}, {"n": "Knight", "r": "Legendary", "k": "unit", "c": 0, "o": 0, "v": 11000, "s": "Summon 1.2%", "w": 1, "i": "cards/c05.webp", "t": "ultra", "d": "high"}, {"n": "Rook", "r": "Mythic", "k": "unit", "c": 169, "o": 12, "v": 18000, "s": "Summon 0.25%", "w": 0, "i": "cards/c06.webp", "t": "stable", "d": "medium"}, {"n": "Bishop", "r": "Mythic", "k": "unit", "c": 0, "o": 0, "v": 54000, "s": "Summon 0.25%", "w": 1, "i": "cards/c07.webp", "t": "ultra", "d": "high"}, {"n": "Grim Reaper", "r": "Divine", "k": "unit", "c": 33, "o": 9, "v": 110000, "s": "Summon 0.04%", "w": 0, "i": "cards/c08.webp", "t": "stable", "d": "medium"}, {"n": "Homelander", "r": "Celestial", "k": "unit", "c": 9, "o": 4, "v": 500000, "s": "Summon 0.009%", "w": 0, "i": "cards/c09.webp", "t": "stable", "d": "high"}, {"n": "King", "r": "Celestial", "k": "unit", "c": 0, "o": 0, "v": 1500000, "s": "Summon 0.009%", "w": 1, "i": "cards/c10.webp", "t": "ultra", "d": "high"}, {"n": "Queen", "r": "Celestial", "k": "unit", "c": 0, "o": 0, "v": 1500000, "s": "Summon 0.009%", "w": 1, "i": "cards/c11.webp", "t": "ultra", "d": "high"}, {"n": "God Dummy", "r": "Omni", "k": "unit", "c": 0, "o": 0, "v": 4500000, "s": "Summon 0.001%", "w": 0, "i": "cards/c12.webp", "t": "rising", "d": "high"}, {"n": "Frieren", "r": "Omni", "k": "unit", "c": 0, "o": 0, "v": 15000000, "s": "Summon 0.001%", "w": 1, "i": "cards/c13.webp", "t": "ultra", "d": "insane"}, {"n": "Arthur Morgan", "r": "Rare", "k": "unit", "c": 370, "o": 12, "v": 7300, "s": "Endless Crate 90%", "w": 0, "i": "cards/c14.webp", "t": "stable", "d": "low"}, {"n": "Postal Dude", "r": "Mythic", "k": "unit", "c": 33, "o": 9, "v": 120000, "s": "Endless Crate 9%", "w": 0, "i": "cards/c15.webp", "t": "stable", "d": "medium"}, {"n": "Gordon Freeman", "r": "Celestial", "k": "unit", "c": 4, "o": 2, "v": 1300000, "s": "Endless Crate 0.99%", "w": 0, "i": "cards/c16.webp", "t": "rising", "d": "high"}, {"n": "G-Man", "r": "Omni", "k": "unit", "c": 0, "o": 0, "v": 120000000, "s": "Endless Crate 0.01%", "w": 0, "i": "cards/c17.webp", "t": "rising", "d": "insane"}, {"n": "Bloxy Awards Statue", "r": "Exclusive", "k": "unit", "c": 6, "o": 6, "v": 840000, "s": "Trophy Crate 0.5%", "w": 0, "i": "cards/c18.webp", "t": "dropping", "d": "medium"}, {"n": "Default", "r": "Common", "k": "glove", "c": 260, "o": 28, "v": 10000, "s": "Slap Crate 60%", "w": 0, "i": "cards/c19.webp", "t": "stable", "d": "low"}, {"n": "Extended", "r": "Uncommon", "k": "glove", "c": 99, "o": 9, "v": 40000, "s": "Slap Crate 30%", "w": 0, "i": "cards/c20.webp", "t": "stable", "d": "low"}, {"n": "Replica", "r": "Rare", "k": "glove", "c": 36, "o": 7, "v": 750000, "s": "Slap Crate 9.59%", "w": 0, "i": "cards/c21.webp", "t": "rising", "d": "medium"}, {"n": "Killstreak", "r": "Epic", "k": "glove", "c": 1, "o": 1, "v": 1500000, "s": "Shop, 5,000 slaps", "w": 0, "i": "cards/c22.webp", "t": "stable", "d": "medium"}, {"n": "Reaper", "r": "Epic", "k": "glove", "c": 2, "o": 2, "v": 1000000, "s": "Shop, 3,500 slaps", "w": 0, "i": "cards/c23.webp", "t": "stable", "d": "medium"}, {"n": "Overkill", "r": "Legendary", "k": "glove", "c": 1, "o": 1, "v": 30000000, "s": "Slap Crate 0.3%", "w": 0, "i": "cards/c24.webp", "t": "rising", "d": "medium"}, {"n": "Tycoon", "r": "Mythic", "k": "glove", "c": 1, "o": 1, "v": 100000000, "s": "Drop from Plate wins", "w": 0, "i": "cards/c25.webp", "t": "rising", "d": "high"}, {"n": "Error", "r": "Mythic", "k": "glove", "c": 0, "o": 0, "v": 60000000, "s": "Slap Crate 0.1%", "w": 0, "i": "cards/c26.webp", "t": "rising", "d": "medium"}, {"n": "God's Hand", "r": "Divine", "k": "glove", "c": 1, "o": 1, "v": 21000000, "s": "Shop, 70,000 slaps", "w": 0, "i": "cards/c27.webp", "t": "stable", "d": "high"}, {"n": "Bob", "r": "Celestial", "k": "glove", "c": 0, "o": 0, "v": 300000000, "s": "Slap Crate 0.01%", "w": 0, "i": "cards/c28.webp", "t": "rising", "d": "high"}, {"n": "Rob", "r": "Omni", "k": "glove", "c": 0, "o": 0, "v": 450000000, "s": "Evolved from 5 gloves", "w": 0, "i": "cards/c29.webp", "t": "rising", "d": "high"}, {"n": "Endless Crate", "r": "Crate", "k": "crate", "c": 6, "o": 1, "v": 40000, "s": "10 endless waves", "w": 0, "i": "cards/c30.webp", "t": "stable", "d": "medium"}, {"n": "Trophy Crate", "r": "Crate", "k": "crate", "c": 154, "o": 11, "v": 4000, "s": "Achievements, codes, VIP", "w": 0, "i": "cards/c31.webp", "t": "dropping", "d": "low"}, {"n": "Slap Crate", "r": "Crate", "k": "crate", "c": 0, "o": 0, "v": 300000, "s": "1,000 slaps", "w": 0, "i": "cards/c32.webp", "t": "rising", "d": "medium"}];
+const colors = {Common: "common", Uncommon: "uncommon", Rare: "rare", Epic: "epic", Legendary: "legendary", Mythic: "mythic", Divine: "divine", Celestial: "celestial", Omni: "common", Exclusive: "exclusive", Crate: "legendary"};
+const kinds = {unit: "unit", glove: "glove", crate: "crate"};
+const trends = {ultra: "▲▲ Ultra rising", rising: "▲ Rising", stable: "Stable", dropping: "▼ Dropping"};
+const demands = {insane: "Insane demand", high: "High demand", medium: "Medium demand", low: "Low demand"};
+const heat = {ultra: 3, rising: 2, stable: 1, dropping: 0};
+const want = {insane: 3, high: 2, medium: 1, low: 0};
+const byname = {};
+items.forEach(function (item) { byname[item.n] = item; });
+
+function trim(number) {
+	return (Math.round(number * 100) / 100).toString();
+}
+function short(value) {
+	if (value >= 1e9) return trim(value / 1e9) + "B";
+	if (value >= 1e6) return trim(value / 1e6) + "M";
+	if (value >= 1e4) return trim(value / 1e3) + "K";
+	return Math.round(value).toLocaleString("en-US");
+}
+function full(value) {
+	return Math.round(value).toLocaleString("en-US");
+}
+function open(item) {
+	return item.k !== "crate" && item.c <= 0;
+}
+function worth(item) {
+	return open(item) ? Infinity : item.v;
+}
+function color(rarity) {
+	return "var(--" + (colors[rarity] || "common") + ")";
+}
+
+const state = {kind: "all", sort: "high", search: "", give: {}, get: {}, givetokens: 0, gettokens: 0, example: true};
+
+function restore() {
+	try {
+		const saved = JSON.parse(localStorage.getItem("trade") || "null");
+		if (saved && typeof saved === "object") {
+			["give", "get"].forEach(function (side) {
+				state[side] = {};
+				Object.keys(saved[side] || {}).forEach(function (name) {
+					if (byname[name] && saved[side][name] > 0) state[side][name] = Math.min(999, Math.floor(saved[side][name]));
+				});
+			});
+			state.givetokens = Math.max(0, Number(saved.givetokens) || 0);
+			state.gettokens = Math.max(0, Number(saved.gettokens) || 0);
+			state.example = false;
+			return true;
+		}
+	} catch (problem) {}
+	return false;
+}
+function remember() {
+	try {
+		localStorage.setItem("trade", JSON.stringify({give: state.give, get: state.get, givetokens: state.givetokens, gettokens: state.gettokens}));
+	} catch (problem) {}
+}
+
+function owners(item) {
+	if (item.k === "crate") {
+		return item.c > 0 ? item.c + " unopened" : "none unopened";
+	}
+	if (item.c <= 0) return "nobody has it yet";
+	return item.o + (item.o === 1 ? " owner" : " owners");
+}
+
+function drawgrid() {
+	const grid = document.getElementById("grid");
+	const words = state.search.trim().toLowerCase();
+	const list = items.filter(function (item) {
+		if (state.kind !== "all" && item.k !== state.kind) return false;
+		if (!words) return true;
+		const labels = open(item) ? "O/C N/A" : trends[item.t] + " " + demands[item.d];
+		return (item.n + " " + item.r + " " + item.s + " " + labels).toLowerCase().indexOf(words) !== -1;
+	});
+	list.sort(function (a, b) {
+		if (state.sort === "name") return a.n.localeCompare(b.n);
+		if (state.sort === "rare") return a.c - b.c || b.v - a.v;
+		if (state.sort === "hot") return (open(a) ? 1 : 0) - (open(b) ? 1 : 0) || heat[b.t] - heat[a.t] || want[b.d] - want[a.d] || b.v - a.v;
+		if (worth(a) === worth(b)) return b.v - a.v;
+		return state.sort === "low" ? worth(a) - worth(b) : worth(b) - worth(a);
+	});
+	grid.textContent = "";
+	list.forEach(function (item) {
+		const card = document.createElement("article");
+		card.className = "card";
+		card.dataset.r = item.r;
+		card.style.setProperty("--rc", color(item.r));
+		const pic = document.createElement("div");
+		pic.className = "pic";
+		const image = document.createElement("img");
+		image.src = item.i;
+		image.alt = "";
+		image.loading = "lazy";
+		pic.appendChild(image);
+		const amount = document.createElement("div");
+		amount.className = "amt ink";
+		amount.textContent = "x" + full(item.c);
+		amount.title = full(item.c) + " exist";
+		pic.appendChild(amount);
+		if (item.w) {
+			const tag = document.createElement("div");
+			tag.className = "tag ink";
+			tag.textContent = "UPD 2";
+			pic.appendChild(tag);
+		}
+		const name = document.createElement("h3");
+		name.className = "ink";
+		name.textContent = item.n;
+		const value = document.createElement("div");
+		value.className = "val ink";
+		value.title = open(item) ? "Owner's choice: nobody has one yet, so the owner sets the price" : full(item.v) + " tokens";
+		value.textContent = open(item) ? "O/C" : short(item.v);
+		const pills = document.createElement("div");
+		pills.className = "pills";
+		(open(item) ? [["stable", "N/A"], ["stable", "N/A demand"]] : [[item.t, trends[item.t]], [item.d, demands[item.d]]]).forEach(function (pair) {
+			const pill = document.createElement("span");
+			pill.className = "pill " + pair[0];
+			pill.textContent = pair[1];
+			pills.appendChild(pill);
+		});
+		const info = document.createElement("p");
+		info.className = "info";
+		info.textContent = (item.k === "crate" ? "Crate" : item.r + " " + kinds[item.k]) + " · " + owners(item) + " · " + item.s;
+		const acts = document.createElement("div");
+		acts.className = "acts";
+		[["give", "Give", "red"], ["get", "Get", "green"]].forEach(function (pair) {
+			const button = document.createElement("button");
+			button.type = "button";
+			button.className = "btn " + pair[2];
+			button.textContent = "+ " + pair[1];
+			button.setAttribute("aria-label", "Add " + item.n + " to what you " + pair[0]);
+			button.addEventListener("click", function () { add(pair[0], item.n, 1); });
+			acts.appendChild(button);
+		});
+		[pic, name, value, pills, info, acts].forEach(function (part) { card.appendChild(part); });
+		grid.appendChild(card);
+	});
+	document.getElementById("empty").hidden = list.length > 0;
+}
+
+function leave() {
+	if (state.example) {
+		state.example = false;
+		state.give = {};
+		state.get = {};
+		state.givetokens = 0;
+		state.gettokens = 0;
+		document.getElementById("givetokens").value = "";
+		document.getElementById("gettokens").value = "";
+	}
+}
+
+function add(side, name, amount) {
+	leave();
+	const next = (state[side][name] || 0) + amount;
+	if (next <= 0) {
+		delete state[side][name];
+	} else {
+		state[side][name] = Math.min(999, next);
+	}
+	remember();
+	drawcalc();
+}
+
+function total(side) {
+	let sum = state[side + "tokens"];
+	Object.keys(state[side]).forEach(function (name) {
+		if (!open(byname[name])) sum += byname[name].v * state[side][name];
+	});
+	return sum;
+}
+
+function drawside(side) {
+	const rows = document.getElementById(side + "rows");
+	rows.textContent = "";
+	const names = Object.keys(state[side]).sort(function (a, b) { return worth(byname[b]) - worth(byname[a]) || byname[b].v - byname[a].v; });
+	names.forEach(function (name) {
+		const item = byname[name];
+		const count = state[side][name];
+		const row = document.createElement("li");
+		row.className = "row";
+		row.dataset.r = item.r;
+		row.style.setProperty("--rc", color(item.r));
+		const image = document.createElement("img");
+		image.className = "mini";
+		image.src = item.i;
+		image.alt = "";
+		const label = document.createElement("div");
+		label.className = "nm";
+		label.textContent = name;
+		const sub = document.createElement("small");
+		sub.textContent = open(item) ? "O/C" : short(item.v * count);
+		label.appendChild(sub);
+		const qty = document.createElement("div");
+		qty.className = "qty";
+		const less = document.createElement("button");
+		less.type = "button";
+		less.className = "sq";
+		less.textContent = "−";
+		less.setAttribute("aria-label", "One less " + name);
+		less.addEventListener("click", function () { add(side, name, -1); });
+		const amount = document.createElement("b");
+		amount.textContent = count;
+		const more = document.createElement("button");
+		more.type = "button";
+		more.className = "sq";
+		more.textContent = "+";
+		more.setAttribute("aria-label", "One more " + name);
+		more.addEventListener("click", function () { add(side, name, 1); });
+		qty.appendChild(less);
+		qty.appendChild(amount);
+		qty.appendChild(more);
+		const remove = document.createElement("button");
+		remove.type = "button";
+		remove.className = "sq x";
+		remove.textContent = "×";
+		remove.setAttribute("aria-label", "Remove " + name);
+		remove.addEventListener("click", function () { add(side, name, -999); });
+		[image, label, qty, remove].forEach(function (part) { row.appendChild(part); });
+		rows.appendChild(row);
+	});
+	document.getElementById(side + "hint").hidden = names.length > 0;
+	document.getElementById(side + "total").textContent = short(total(side));
+}
+
+function drawcalc() {
+	drawside("give");
+	drawside("get");
+	document.getElementById("example").hidden = !state.example;
+	const give = total("give");
+	const get = total("get");
+	const box = document.getElementById("verdict");
+	const title = document.getElementById("verdicttitle");
+	const note = document.getElementById("verdictnote");
+	const bar = document.getElementById("bar");
+	box.className = "verdict";
+	const loose = ["give", "get"].some(function (side) {
+		return Object.keys(state[side]).some(function (name) { return open(byname[name]); });
+	});
+	if (loose && (give <= 0 || get <= 0)) {
+		title.textContent = "Owner's choice";
+		note.textContent = "O/C items have no set value yet. Whoever owns one decides what they want for it.";
+		bar.hidden = true;
+		return;
+	}
+	if (give <= 0 || get <= 0) {
+		title.textContent = give <= 0 && get <= 0 ? "Add items to both sides" : "Add something to the other side";
+		note.textContent = "The calculator adds up both sides and tells you who wins.";
+		bar.hidden = true;
+		return;
+	}
+	const gap = get - give;
+	const percent = Math.abs(gap) / Math.max(give, get) * 100;
+	bar.hidden = false;
+	document.getElementById("bargive").style.width = (give / (give + get) * 100) + "%";
+	document.getElementById("barget").style.width = (get / (give + get) * 100) + "%";
+	const extra = loose ? " O/C items are not counted, the owner sets their price." : "";
+	if (percent <= 10) {
+		box.classList.add("fair");
+		title.textContent = "Fair trade";
+		note.textContent = "You give " + short(give) + " and get " + short(get) + ". The gap is " + short(Math.abs(gap)) + " (" + percent.toFixed(1) + "%)." + extra;
+	} else if (gap > 0) {
+		box.classList.add("win");
+		title.textContent = "You win by " + short(gap);
+		note.textContent = "You give " + short(give) + " and get " + short(get) + ". That is " + percent.toFixed(0) + "% in your favor." + extra;
+	} else {
+		box.classList.add("lose");
+		title.textContent = "You lose by " + short(-gap);
+		note.textContent = "You give " + short(give) + " and get " + short(get) + ". Ask for " + short(-gap) + " more to make it fair." + extra;
+	}
+}
+
+function tokens(text) {
+	const clean = String(text).trim().toLowerCase().replace(/[, ]/g, "");
+	const match = clean.match(/^(\d+(?:\.\d+)?)([kmb]?)$/);
+	if (!match) return 0;
+	const scale = {"": 1, k: 1e3, m: 1e6, b: 1e9}[match[2]];
+	return Math.min(1e12, Math.round(parseFloat(match[1]) * scale));
+}
+
+document.getElementById("search").addEventListener("input", function (event) {
+	state.search = event.target.value;
+	drawgrid();
+});
+document.getElementById("sort").addEventListener("change", function (event) {
+	state.sort = event.target.value;
+	drawgrid();
+});
+document.getElementById("chips").addEventListener("click", function (event) {
+	const chip = event.target.closest(".chip");
+	if (!chip) return;
+	state.kind = chip.dataset.kind;
+	document.querySelectorAll(".chip").forEach(function (other) {
+		other.setAttribute("aria-pressed", other === chip ? "true" : "false");
+	});
+	drawgrid();
+});
+["give", "get"].forEach(function (side) {
+	const input = document.getElementById(side + "tokens");
+	input.addEventListener("input", function () {
+		const typed = input.value;
+		leave();
+		input.value = typed;
+		state[side + "tokens"] = tokens(typed);
+		remember();
+		drawcalc();
+	});
+});
+document.getElementById("clear").addEventListener("click", function () {
+	state.example = false;
+	state.give = {};
+	state.get = {};
+	state.givetokens = 0;
+	state.gettokens = 0;
+	document.getElementById("givetokens").value = "";
+	document.getElementById("gettokens").value = "";
+	try { localStorage.removeItem("trade"); } catch (problem) {}
+	drawcalc();
+});
+
+if (!restore()) {
+	state.give = {Rook: 6};
+	state.givetokens = 0;
+	state.get = {"Grim Reaper": 1};
+	document.getElementById("givetokens").value = "";
+} else {
+	if (state.givetokens) document.getElementById("givetokens").value = full(state.givetokens);
+	if (state.gettokens) document.getElementById("gettokens").value = full(state.gettokens);
+}
+drawgrid();
+drawcalc();
+</script>
+
+</body>
+</html>
